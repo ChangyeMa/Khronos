@@ -66,6 +66,6 @@ docker compose run --rm khronos /root/scripts/eval.sh /root/output/<timestamp> o
 
 ## Notes
 
-- The Khronos source is cloned by `build.sh` (default `MIT-SPARK/Khronos@main`).
-  To use a fork: `docker compose run --rm -e KHRONOS_URI=https://github.com/<you>/Khronos.git khronos /root/scripts/build.sh`.
+- The Khronos source is cloned by `build.sh` from this fork
+  (`ChangyeMa/Khronos@main`). Override with `KHRONOS_URI`/`KHRONOS_BRANCH` if needed.
 - Topic names must match the dataset config (sim: `/tesse/...`, real: `/sparkal1/...` + `/oneformer/...`).

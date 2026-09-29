@@ -4,7 +4,7 @@
 set -euo pipefail
 
 WS="${WS:-/root/ros2_ws}"
-KHRONOS_URI="${KHRONOS_URI:-https://github.com/MIT-SPARK/Khronos.git}"
+KHRONOS_URI="${KHRONOS_URI:-https://github.com/ChangyeMa/Khronos.git}"
 KHRONOS_BRANCH="${KHRONOS_BRANCH:-main}"
 
 mkdir -p "$WS/src"
