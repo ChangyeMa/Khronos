@@ -189,3 +189,19 @@ cd ~/ros2_ws/src/khronos
 pip install pre-commit
 pre-commit install
 ```
+
+## Run with Docker (ROS2 Jazzy)
+
+A containerized benchmark environment is provided in [`docker/`](docker/). It runs
+Khronos on ROS2 Jazzy (Ubuntu 24.04) with RViz + NVIDIA GPU support, and keeps all
+data (bags, build, output) outside the repo under `~/khronos_data/`.
+
+```bash
+cd docker
+xhost +local:
+docker compose build
+docker compose run --rm khronos /root/scripts/build.sh    # clone deps + colcon build
+docker compose run --rm khronos /root/scripts/run_sim.sh  # run on tesse_cd_office
+```
+
+See [`docker/README.md`](docker/README.md) for full usage (sim/real datasets, evaluation, CPU-only notes).
