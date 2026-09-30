@@ -117,6 +117,74 @@ Records the issues encountered and fixes applied while setting up Khronos
 
 ---
 
+## Isaac Sim path (RGB-D + GT semantic labels)
+
+Third input path: Isaac Sim `isaac_world_test.usd` (warehouse + Carter robot), with GT
+semantic labels (`use_gt_semantics: true`) and GT pose (`use_gt_frame: true`). Issues
+encountered and fixes:
+
+### Issue 10 — Circular trajectory (camera orbited the origin)
+
+- **Symptom**: Khronos estimated a perfect circle regardless of the robot's motion.
+- **Cause**: the recording script orbited the camera around the origin and published that
+  circular pose as `world → camera`.
+- **Fix**: publish the actual robot-mounted camera pose (see Issue 12/13).
+
+### Issue 11 — `TF_SELF_TRANSFORM` (camera → camera)
+
+- **Symptom**: TF2 spam `Ignoring transform ... frame_id and child_frame_id "camera"`.
+- **Cause**: the script published a bogus `camera → camera` self-transform.
+- **Fix**: removed it; publish only `world → camera`.
+
+### Issue 12 — Camera axis misalignment (yaw showed up as roll)
+
+- **Symptom**: the Carter's yaw appeared as roll in the reconstruction (swept scene graph).
+- **Cause**: the USD camera frame (view `-Z`, up `+Y`, right `+X`) is not the Carter body
+  frame (forward `+X`, right `-Y`, up `+Z`); a hand-rolled mount rotation got the axes wrong.
+- **Fix**: use the Carter's **built-in `carter_camera_first_person`** camera
+  (`/World/carter_v1/chassis_link/camera_mount/carter_camera_first_person`) and publish its
+  world pose in the ROS camera frame (`+Z` forward, `+X` right, `+Y` down = USD rotated 180° about X).
+
+### Issue 13 — Images from the third-person viewport camera
+
+- **Symptom**: the recorded images were a third-person view, not the robot camera; the ground
+  reconstructed tilted.
+- **Cause**: the OmniGraph `setCamera` node never received `renderProductPath` (only the
+  `ROS2CameraHelper` nodes did), so `setCamera` failed with `Invalid renderProduct ""` and the
+  render stayed on the default viewport.
+- **Fix**: connect `getRenderProduct.outputs:renderProductPath → setCamera.inputs:renderProductPath`.
+
+### Issue 14 — Odometry time base mismatch
+
+- **Symptom**: `Failed to find 'world_T_camera @ ... [ns]'` / `Lookup would require
+  extrapolation into the past`; the frontend dropped inputs due to a missing pose.
+- **Cause**: `ROS2CameraHelper` stamps images with **sim time**, but `/tf` `/odom` used the
+  **wall clock** (or vice-versa) — the two time bases must match.
+- **Fix**: stamp `/tf` + `/odom` with sim time (`tf_node.set_parameters([use_sim_time: true])`)
+  and run Khronos with `sim_time_required: true`, matching the images.
+
+### Issue 15 — Missing `/odom` (nav_msgs/Odometry)
+
+- **Symptom**: pose graph empty / sweep; the Isaac Sim bag had `/tf` but no `/odom`.
+- **Cause**: Khronos's pose-graph tracker (`PoseGraphFromOdom`) needs an odometry source.
+- **Fix**: publish `/odom` (`nav_msgs/Odometry`, `world → camera`) alongside `/tf`.
+
+### Issue 16 — `SimulationContext` invalidated by `open_stage`
+
+- **Symptom**: `World or Simulation Object are invalidated` at launch.
+- **Cause**: `SimulationContext` was created **before** `omni.usd.open_stage()`, which resets
+  the stage and invalidates the context.
+- **Fix**: open the stage first, wait for `is_stage_loading()` to finish, then create the
+  `SimulationContext`.
+
+### ✅ Isaac Sim result
+
+The Carter's `carter_camera_first_person` camera is rendered, `/tf` + `/odom` are stamped in
+sim time, and the launch uses `use_gt_semantics: true` + `use_gt_frame: true`. Re-record the
+bag and re-run Khronos (the correct setup is documented in `isaac_sim/README.md`).
+
+---
+
 ## Other notes
 
 - Khronos writes output to `output_dir` directly and `remove_all()`s it when

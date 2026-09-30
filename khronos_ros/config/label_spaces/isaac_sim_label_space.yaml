@@ -1,0 +1,43 @@
+---
+# Isaac Sim GT semantic label space.
+#
+# Confirmed from the recorded bag via docker/scripts/inspect_semantic.py:
+#   topic    = /isaac/semantic/image_raw
+#   encoding = 32SC1
+#   ids      = 1..23 (23 distinct labels; id 0 never appears)
+#
+# TODO: determine the id -> object-name mapping for the warehouse scene
+# (floor, wall, ceiling, beam, rack, shelf, box/carton, crate, forklift, lamp,
+#  decal, fusebox, bracket, pillar, ... plus the Jackal + Carter robots).
+# Until then the ids use placeholder names so the pipeline runs; the DSG label
+# names (and dynamic/object/surface classification) still need to be filled in.
+total_semantic_labels: 24
+dynamic_labels: []
+invalid_labels: [0]
+object_labels: []
+surface_places_labels: []
+label_names:
+  - {label: 0, name: Unknown}
+  - {label: 1, name: class_1}
+  - {label: 2, name: class_2}
+  - {label: 3, name: class_3}
+  - {label: 4, name: class_4}
+  - {label: 5, name: class_5}
+  - {label: 6, name: class_6}
+  - {label: 7, name: class_7}
+  - {label: 8, name: class_8}
+  - {label: 9, name: class_9}
+  - {label: 10, name: class_10}
+  - {label: 11, name: class_11}
+  - {label: 12, name: class_12}
+  - {label: 13, name: class_13}
+  - {label: 14, name: class_14}
+  - {label: 15, name: class_15}
+  - {label: 16, name: class_16}
+  - {label: 17, name: class_17}
+  - {label: 18, name: class_18}
+  - {label: 19, name: class_19}
+  - {label: 20, name: class_20}
+  - {label: 21, name: class_21}
+  - {label: 22, name: class_22}
+  - {label: 23, name: class_23}
