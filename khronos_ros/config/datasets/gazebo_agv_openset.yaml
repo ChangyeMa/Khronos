@@ -1,0 +1,16 @@
+# Gazebo Classic AGV (ROS2 Humble) dataset — RGB-D input with open-set semantics.
+# Camera intrinsics come from the recorded /camera_1/camera_info topic (type: camera_info).
+type: RosInput
+tf_verbosity: 1
+clear_queue_on_fail: true
+inputs:
+  left_cam:
+    receiver:
+      type: OpenSetImageReceiver
+      input_separation_s: 0.04 # Limit input rate to ~25 Hz
+    sensor:
+      type: camera_info
+      min_range: $(var sensor_min_range)
+      max_range: $(var sensor_max_range)
+      extrinsics:
+        type: ros

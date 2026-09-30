@@ -10,6 +10,11 @@ services:
       - DISPLAY=${DISPLAY}
       - QT_X11_NO_MITSHM=1
       - XAUTHORITY=/root/.Xauthority
+      # Persistent HOME so model weights (CLIP + FastSAM) are cached on disk
+      # and don't re-download (~1 GB) on every container start.
+      - HOME=/root/ros2_ws/semantic_home
+      # Ultralytics (FastSAM) config/weights cache location (persistent).
+      - YOLO_CONFIG_DIR=/root/ros2_ws/semantic_home/.config/Ultralytics
       # GPU passthrough (NVIDIA) for RViz rendering and open-set segmentation.
       # CPU-only users: comment out 'gpus:' below and these two NVIDIA_* lines.
       # (It works with software rendering, but is not recommended / much slower.)

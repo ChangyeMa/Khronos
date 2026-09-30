@@ -1,0 +1,107 @@
+---
+launch:
+  # ============ System ============
+  - arg: {name: sim_time_required, default: 'true'}
+  - arg: {name: evaluate, default: 'true'}
+  # Use a SUBDIRECTORY of /root/output (a bind-mount point) to avoid
+  # "Device or resource busy" when Khronos overwrites the output dir.
+  - arg: {name: output_dir, default: '/root/output/gazebo_agv'}
+  - arg: {name: paused, default: 'false'}
+
+  # Semantics: no GT labels in Gazebo -> closed-set (ADE20k/TensorRT) segmentation.
+  - arg: {name: use_gt_semantics, default: 'false'}
+  - arg: {name: use_openset_semantics, default: 'false'}
+  # Pose: odometry-based (Gazebo diff-drive), not GT.
+  - arg: {name: use_gt_frame, default: 'false'}
+
+  # ============ Dataset ============
+  - arg: {name: dataset, default: gazebo_agv}
+  - arg: {name: bag_dir, default: /data/bags}
+  - arg: {name: play_rate, default: '1'}
+  - arg: {name: bag_path, default: $(var bag_dir)/$(var dataset)}
+
+  # ============ Configs ============
+  - arg: {name: input_config, default: $(find-pkg-share khronos_ros)/config/datasets/uHumans2.yaml}
+  - arg: {name: mapper_config, default: $(find-pkg-share khronos_ros)/config/mapper/uHumans2.yaml}
+  - arg: {name: rviz_path, default: $(find-pkg-share khronos_ros)/config/rviz/uHumans2.rviz}
+  - arg: {name: labelspace_config, default: $(find-pkg-share hydra)/config/label_spaces/ade20k_indoor_label_space.yaml}
+  - arg: {name: semantic_colormap_config, default: ''}
+  - let: {name: extra_yaml, value: '{semantic_colormap_file: $(var semantic_colormap_config)}'}
+
+  # ============ Frames (AGV5) ============
+  - arg: {name: sensor_frame, default: camera_1_link}
+  - arg: {name: robot_frame, default: base_footprint_gz}
+  - arg: {name: odom_frame, default: odom}
+  - arg: {name: map_frame, default: map}
+  - arg: {name: world_frame, default: world}
+
+  # ============ Sensor range ============
+  - arg: {name: sensor_min_range, default: '0.1'}
+  - arg: {name: sensor_max_range, default: '5.0'}
+
+  # ============ Input topics ============
+  - arg: {name: rgb_topic, default: /camera_1/image_raw}
+  - arg: {name: rgb_info_topic, default: /camera_1/camera_info}
+  - arg: {name: depth_topic, default: /camera_1/depth/image_raw}
+  - arg: {name: label_topic, default: /semantic_inference/semantic/image_raw}
+  - arg: {name: segmenter_config, default: $(find-pkg-share khronos_ros)/config/openset/sam_clip.yaml}
+
+  # ============ Set sim time ============
+  - set_parameter:
+      name: use_sim_time
+      value: $(var sim_time_required)
+
+  # ============ Play the bag (ianvs) ============
+  # Delay the player so semantic_inference (ADE20k/TensorRT) finishes initializing
+  # (~10-15 s) before the bag data starts flowing, otherwise the first frames are lost.
+  - executable:
+      cmd: sleep 15 && ros2 run ianvs play_rosbag $(var bag_path) -r $(var play_rate) --clock $(if $(var paused) --start-paused)
+      name: dataset_player
+      output: screen
+      shell: true
+
+  # ============ Closed-set semantic inference (ADE20k / TensorRT) ============
+  - group:
+      - set_remap: {from: /semantic_inference/color/image_raw, to: $(var rgb_topic)}
+      - node:
+          pkg: semantic_inference_ros
+          exec: closed_set_node
+          name: semantic_inference
+          namespace: semantic_inference
+          on_exit: shutdown
+          args: >
+            --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/ade20k-efficientvit_seg_l2.yaml
+            --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/ade20k_indoor.yaml@output/recolor
+            --config-utilities-yaml {segmenter: {model: {model_file: ade20k-efficientvit_seg_l2.onnx, force_rebuild: false}}}
+            --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
+            --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
+            --config-utilities-yaml {image_rotator: {rotation: none}}
+            --config-utilities-yaml {show_config: true}
+
+  # ============ Static TFs (world -> map -> odom, identity) ============
+  - node: {pkg: tf2_ros, exec: static_transform_publisher, name: map_to_odom_static_tf, args: --child-frame-id odom --frame-id map}
+  - node: {pkg: tf2_ros, exec: static_transform_publisher, name: world_to_map_static_tf, args: --child-frame-id map --frame-id world}
+
+  # ============ Launch Khronos ============
+  - include:
+      file: $(find-pkg-share khronos_ros)/launch/khronos.launch.yaml
+      arg:
+        - {name: input_config, value: $(var input_config)}
+        - {name: mapper_config, value: $(var mapper_config)}
+        - {name: rviz_path, value: $(var rviz_path)}
+        - {name: labelspace_config, value: $(var labelspace_config)}
+        - {name: extra_yaml, value: $(var extra_yaml)}
+        - {name: output_dir, value: $(var output_dir)}
+        - {name: evaluate, value: $(var evaluate)}
+        - {name: sensor_min_range, value: $(var sensor_min_range)}
+        - {name: sensor_max_range, value: $(var sensor_max_range)}
+        - {name: sensor_frame, value: $(var sensor_frame)}
+        - {name: robot_frame, value: $(var robot_frame)}
+        - {name: odom_frame, value: $(var odom_frame)}
+        - {name: map_frame, value: $(var map_frame)}
+        - {name: world_frame, value: $(var world_frame)}
+        - {name: use_gt_frame, value: $(var use_gt_frame)}
+        - {name: rgb_topic, value: $(var rgb_topic)}
+        - {name: rgb_info_topic, value: $(var rgb_info_topic)}
+        - {name: depth_topic, value: $(var depth_topic)}
+        - {name: label_topic, value: $(var label_topic)}

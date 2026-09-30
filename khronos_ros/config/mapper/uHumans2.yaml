@@ -84,6 +84,11 @@ active_window:
     temporal_window: *temporal_window # Time unobserved until a voxel exits the active window [s]
     num_threads: *active_window_threads
 
+  # Use TF (odom -> robot_frame) as the odometry source (Gazebo/odometry data,
+  # no Kimera pose graph). The bag's /tf publishes odom -> base_footprint_gz.
+  odometry:
+    type: "tf"
+
   object_extractor:
     type: MeshObjectExtractor
     verbosity: 0

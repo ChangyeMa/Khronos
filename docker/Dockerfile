@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         wget \
         python3-pip \
+        python3-venv \
         python3-vcstool \
         python3-rosdep \
         python3-colcon-common-extensions \
@@ -39,6 +40,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Initialize rosdep (the osrf image may already have done this).
 RUN rosdep init || true && rosdep update || true
+
+# CUDA + TensorRT for closed-set (ADE20k) semantic segmentation.
+RUN wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring.deb \
+    && dpkg -i /tmp/cuda-keyring.deb \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libnvinfer-dev libnvonnxparsers-dev libnvinfer-plugin-dev \
+        cuda-nvcc-12-6 \
+    && rm -rf /var/lib/apt/lists/* /tmp/cuda-keyring.deb
 
 # Allow git to operate on bind-mounted repos owned by the host user, so
 # Khronos can record git hash/status at runtime (avoid "dubious ownership").
